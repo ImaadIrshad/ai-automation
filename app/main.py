@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
+from app.config import get_settings
 from crs.base import CRSModel, Turn
 
 
@@ -15,8 +16,23 @@ class _EchoModel(CRSModel):
             yield word + " "
 
 
+def build_model(approach: str) -> CRSModel:
+    """Select the CRS implementation that serves /chat, driven by config.
+
+    This is the single switch point: registering RAG or the multi-agent model
+    later means adding a branch here, never editing the endpoint. Both will
+    implement the same `CRSModel` contract, so they slot in interchangeably.
+    """
+    if approach == "echo":
+        return _EchoModel()
+    # Fail loudly rather than silently serving the wrong thing.
+    raise ValueError(
+        f"CRS approach {approach!r} is not implemented yet; available: 'echo'"
+    )
+
+
 app = FastAPI(title="ai-automation CRS API")
-model: CRSModel = _EchoModel()
+model: CRSModel = build_model(get_settings().approach)
 
 
 class ChatTurn(BaseModel):
