@@ -1,8 +1,9 @@
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-from starlette.responses import StreamingResponse
+from starlette.responses import FileResponse, StreamingResponse
 
 from app.config import get_settings
 from crs.base import CRSModel, Turn
@@ -10,6 +11,8 @@ from crs.base import CRSModel, Turn
 # Where the cached FAISS index lives and the metadata to build it from if absent.
 _INDEX_DIR = "data/processed/movie_index"
 _METADATA_PATH = "data/sample/movie_metadata.json"
+# The chat UI lives next to this module so it's found regardless of the cwd.
+_STATIC_DIR = Path(__file__).parent / "static"
 
 
 class _EchoModel(CRSModel):
@@ -103,6 +106,19 @@ async def chat(request: ChatRequest) -> StreamingResponse:
             yield chunk
 
     return StreamingResponse(stream(), media_type="text/plain")
+
+
+@app.get("/")
+async def index() -> FileResponse:
+    """Serve the minimal chat UI."""
+    return FileResponse(_STATIC_DIR / "index.html")
+
+
+@app.get("/config")
+async def config() -> dict[str, str]:
+    """Expose the active approach so the UI can show which model it's talking to."""
+    settings = get_settings()
+    return {"approach": settings.approach, "model": settings.llm_model}
 
 
 @app.get("/health")
