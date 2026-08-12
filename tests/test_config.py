@@ -28,4 +28,4 @@ def test_build_model_echo() -> None:
 def test_build_model_unknown_raises() -> None:
     # An unimplemented approach must fail loudly, not serve the wrong model.
     with pytest.raises(ValueError):
-        build_model("multi_agent")
+        build_model("does_not_exist")

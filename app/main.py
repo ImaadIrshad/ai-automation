@@ -31,38 +31,53 @@ def build_model(approach: str) -> CRSModel:
         return _EchoModel()
     if approach == "rag":
         return _build_rag_model()
+    if approach == "multi_agent":
+        return _build_multi_agent_model()
     # Fail loudly rather than silently serving the wrong thing.
     raise ValueError(
         f"CRS approach {approach!r} is not implemented yet; "
-        "available: 'echo', 'rag'"
+        "available: 'echo', 'rag', 'multi_agent'"
     )
 
 
-def _build_rag_model() -> CRSModel:
-    """Wire up the RAG model: retriever (cached index if present) + LLM.
+def _load_retriever():
+    """Load the cached FAISS retriever, building it from sample data if absent.
 
-    Imports are local so the heavy retrieval/embedding stack only loads when RAG
-    is actually selected — the default 'echo' path stays lightweight.
+    Shared by the RAG and multi-agent builders. The heavy imports are local so
+    the embedding stack only loads when a retrieval-based approach is selected —
+    the default 'echo' path stays lightweight.
     """
-    from crs.llm import FakeLLM
-    from crs.rag import RAGModel
     from crs.retrieval import LocalEmbedder, Retriever
     from data.loader import load_movie_metadata
 
-    settings = get_settings()
     embedder = LocalEmbedder()
-
-    # Prefer the cached index; fall back to building it from the sample metadata
-    # so a fresh clone still works without a separate build step.
     try:
-        retriever = Retriever.load(_INDEX_DIR, embedder)
+        return Retriever.load(_INDEX_DIR, embedder)
     except (FileNotFoundError, RuntimeError):
         movies = list(load_movie_metadata(_METADATA_PATH).values())
-        retriever = Retriever.build(movies, embedder)
+        return Retriever.build(movies, embedder)
 
-    # FakeLLM keeps us runnable with no API key; swap for a real provider client
-    # (same ChatLLM interface) once a key is configured. See docs/notes.md.
-    return RAGModel(retriever=retriever, llm=FakeLLM(), top_k=settings.top_k)
+
+def _build_rag_model() -> CRSModel:
+    """Wire up Approach 1 (RAG): shared retriever + LLM.
+
+    FakeLLM keeps us runnable with no API key; swap for a real provider client
+    (same ChatLLM interface) once a key is configured. See docs/notes.md.
+    """
+    from crs.llm import FakeLLM
+    from crs.rag import RAGModel
+
+    return RAGModel(retriever=_load_retriever(), llm=FakeLLM(), top_k=get_settings().top_k)
+
+
+def _build_multi_agent_model() -> CRSModel:
+    """Wire up Approach 2 (multi-agent): shared retriever + LLM for the agents."""
+    from crs.llm import FakeLLM
+    from crs.multi_agent import MultiAgentModel
+
+    return MultiAgentModel(
+        retriever=_load_retriever(), llm=FakeLLM(), top_k=get_settings().top_k
+    )
 
 
 app = FastAPI(title="ai-automation CRS API")
