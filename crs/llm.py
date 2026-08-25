@@ -58,6 +58,38 @@ class FakeLLM:
             yield word + " "
 
 
+class OpenAILLM:
+    """Real streaming OpenAI chat client — the genuine generation backend.
+
+    Selected automatically when an API key is configured (see ``app.main``). The
+    key is read from settings/.env and never hardcoded. Our message shape already
+    matches OpenAI's chat format, so nothing upstream changes when we swap this in
+    for the fake — that's the whole point of the ``ChatLLM`` seam.
+    """
+
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini") -> None:
+        # Lazy import so the SDK is only needed on the real path, not in the fast
+        # offline tests that use FakeLLM.
+        from openai import AsyncOpenAI
+
+        self._client = AsyncOpenAI(api_key=api_key)
+        self._model = model
+
+    async def stream(self, messages: Sequence[Message]) -> AsyncIterator[str]:
+        # stream=True yields the reply in deltas as the model generates it, so we
+        # forward tokens to the user immediately instead of waiting for the whole
+        # completion — the same streaming contract the fake honours.
+        completion = await self._client.chat.completions.create(
+            model=self._model,
+            messages=list(messages),
+            stream=True,
+        )
+        async for chunk in completion:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+
+
 def _first_candidate_title(messages: Sequence[Message]) -> str | None:
     """Pull the first retrieved movie title out of the grounded prompt.
 

@@ -7,6 +7,7 @@ from starlette.responses import FileResponse, StreamingResponse
 
 from app.config import get_settings
 from crs.base import CRSModel, Turn
+from crs.llm import ChatLLM
 
 # Where the cached FAISS index lives and the metadata to build it from if absent.
 _INDEX_DIR = "data/processed/movie_index"
@@ -61,25 +62,34 @@ def _load_retriever():
         return Retriever.build(movies, embedder)
 
 
-def _build_rag_model() -> CRSModel:
-    """Wire up Approach 1 (RAG): shared retriever + LLM.
+def _build_llm() -> ChatLLM:
+    """Pick the LLM backend: the real OpenAI client if a key is configured,
+    otherwise the offline FakeLLM.
 
-    FakeLLM keeps us runnable with no API key; swap for a real provider client
-    (same ChatLLM interface) once a key is configured. See docs/notes.md.
+    This is the swap seam. Set CRS_LLM_API_KEY in .env and the whole system —
+    both approaches — starts generating real responses, with no code change.
     """
-    from crs.llm import FakeLLM
+    from crs.llm import FakeLLM, OpenAILLM
+
+    settings = get_settings()
+    if settings.llm_api_key:
+        return OpenAILLM(api_key=settings.llm_api_key, model=settings.llm_model)
+    return FakeLLM()
+
+
+def _build_rag_model() -> CRSModel:
+    """Wire up Approach 1 (RAG): shared retriever + selected LLM backend."""
     from crs.rag import RAGModel
 
-    return RAGModel(retriever=_load_retriever(), llm=FakeLLM(), top_k=get_settings().top_k)
+    return RAGModel(retriever=_load_retriever(), llm=_build_llm(), top_k=get_settings().top_k)
 
 
 def _build_multi_agent_model() -> CRSModel:
-    """Wire up Approach 2 (multi-agent): shared retriever + LLM for the agents."""
-    from crs.llm import FakeLLM
+    """Wire up Approach 2 (multi-agent): shared retriever + selected LLM backend."""
     from crs.multi_agent import MultiAgentModel
 
     return MultiAgentModel(
-        retriever=_load_retriever(), llm=FakeLLM(), top_k=get_settings().top_k
+        retriever=_load_retriever(), llm=_build_llm(), top_k=get_settings().top_k
     )
 
 
