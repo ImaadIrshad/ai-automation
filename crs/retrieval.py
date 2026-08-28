@@ -73,8 +73,17 @@ class RetrievedMovie:
 
 
 def movie_to_document(movie: Movie) -> str:
-    """Render a movie as the single text blurb we embed and index."""
-    return f"{movie.title} ({movie.genre}). {movie.description}"
+    """Render a movie as the single text blurb we embed and index.
+
+    The real dataset provides only a title, so genre/description are folded in
+    only when present — otherwise the document is just the title.
+    """
+    document = movie.title
+    if movie.genre:
+        document += f" ({movie.genre})"
+    if movie.description:
+        document += f". {movie.description}"
+    return document
 
 
 class Retriever:

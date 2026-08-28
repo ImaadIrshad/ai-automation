@@ -2,16 +2,23 @@
 
 This module is the **boundary** between the raw dataset on disk and the rest of
 the system. Everything downstream (retrieval, the RAG model, the agents) talks
-to these dataclasses, never to the raw JSON. That indirection is what lets us
-swap the synthetic sample for the approved real data by changing a path: as long
-as this loader emits the same objects, nothing else notices.
+to these dataclasses, never to the raw files. That indirection is what lets us
+point at the real data or a small sample by changing paths only — as long as this
+loader emits the same objects, nothing else notices.
 
-The raw schema is documented in ``docs/dataset.md``. Two shapes are read:
+The real LLM-Redial Movie data (see ``docs/dataset.md``) is split across three
+files, and this loader joins them:
 
-* the **conversation file** — keyed by user id, each user has structured
-  annotations (likes / dislikes / recommended item) plus User/Agent dialogue;
-* the **movie metadata file** — item id (Amazon ASIN) -> title, genre, plot,
-  standing in for Amazon product metadata.
+* ``final_data.jsonl`` — one JSON object per line, keyed by user id, holding the
+  structured signals (history, likes/dislikes, recommended item). **No dialogue
+  text lives here.**
+* ``Conversation.txt`` — the actual ``User:``/``Agent:`` dialogue, in blocks each
+  headed by an integer ``conversation_id`` (0, 1, 2, ...).
+* ``item_map.json`` — ``ASIN -> title`` (title only; the real data carries no
+  genre/plot).
+
+The join key is ``conversation_id``: it appears in the structured records and is
+the block number in ``Conversation.txt``.
 """
 
 import json
@@ -28,12 +35,17 @@ _ROLE_MAP = {"User": "user", "Agent": "assistant"}
 
 @dataclass
 class Movie:
-    """One movie's human-readable metadata, keyed elsewhere by ``item_id``."""
+    """One movie, keyed elsewhere by ``item_id`` (Amazon ASIN).
+
+    The real dataset only provides a title; ``genre`` and ``description`` are
+    optional so richer sources (or the synthetic sample) can fill them in when
+    available, and retrieval degrades to title-only when they're empty.
+    """
 
     item_id: str
     title: str
-    genre: str
-    description: str
+    genre: str = ""
+    description: str = ""
 
 
 @dataclass
@@ -54,56 +66,86 @@ class Conversation:
 
 
 def load_movie_metadata(path: str | Path) -> dict[str, Movie]:
-    """Read the ASIN -> movie metadata map into ``Movie`` objects."""
-    raw: dict[str, dict[str, str]] = json.loads(Path(path).read_text())
+    """Read the ``ASIN -> title`` map into ``Movie`` objects."""
+    raw: dict[str, str] = json.loads(Path(path).read_text())
     return {
-        item_id: Movie(
-            item_id=item_id,
-            title=fields["title"],
-            genre=fields["genre"],
-            description=fields["description"],
-        )
-        for item_id, fields in raw.items()
+        item_id: Movie(item_id=item_id, title=title)
+        for item_id, title in raw.items()
     }
 
 
-def load_conversations(path: str | Path) -> list[Conversation]:
-    """Read the conversation file into a flat list of ``Conversation`` objects.
+def load_dialogues(path: str | Path) -> dict[int, list[Turn]]:
+    """Parse ``Conversation.txt`` into ``{conversation_id: [Turn, ...]}``.
 
-    The raw file nests conversations two levels deep (per-user, then a
-    ``{"conversation_N": {...}}`` wrapper). We flatten that here so callers get a
-    simple list and never have to walk the wrapper keys.
+    Blocks are headed by a bare integer id; ``User:``/``Agent:`` lines are turns.
+    A line that is neither (a wrapped continuation) is appended to the current
+    turn so multi-line utterances aren't dropped.
     """
-    raw: dict[str, dict] = json.loads(Path(path).read_text())
+    dialogues: dict[int, list[Turn]] = {}
+    current_id: int | None = None
+    turns: list[Turn] = []
+
+    for raw_line in Path(path).read_text().splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.isdigit():
+            # New block: stash the previous one and start fresh.
+            if current_id is not None:
+                dialogues[current_id] = turns
+            current_id = int(line)
+            turns = []
+            continue
+        role = _line_role(line)
+        if role is not None:
+            turns.append(Turn(role=role, content=line.split(":", 1)[1].strip()))
+        elif turns:
+            # Continuation of the previous utterance.
+            turns[-1].content = f"{turns[-1].content} {line}".strip()
+
+    if current_id is not None:
+        dialogues[current_id] = turns
+    return dialogues
+
+
+def load_conversations(
+    structured_path: str | Path, dialogue_path: str | Path
+) -> list[Conversation]:
+    """Join structured records with their dialogue into ``Conversation`` objects.
+
+    Reads ``final_data.jsonl`` line by line (memory-friendly for the full set),
+    flattens the per-user ``{"conversation_N": {...}}`` nesting, and attaches the
+    turns from ``Conversation.txt`` by ``conversation_id``.
+    """
+    dialogues = load_dialogues(dialogue_path)
     conversations: list[Conversation] = []
 
-    for user_id, user_data in raw.items():
-        for wrapper in user_data.get("Conversation", []):
-            # Each wrapper is {"conversation_1": {...}} — one key we don't care
-            # about by name, so take its single value.
-            for convo in wrapper.values():
-                turns = [
-                    Turn(role=_normalize_role(t["role"]), content=t["text"])
-                    for t in convo.get("content", [])
-                ]
-                conversations.append(
-                    Conversation(
-                        user_id=user_id,
-                        conversation_id=convo["conversation_id"],
-                        turns=turns,
-                        liked_items=convo.get("user_likes", []),
-                        disliked_items=convo.get("user_dislikes", []),
-                        recommended_items=convo.get("rec_item", []),
+    for raw_line in Path(structured_path).read_text().splitlines():
+        if not raw_line.strip():
+            continue
+        record: dict[str, dict] = json.loads(raw_line)
+        for user_id, user_data in record.items():
+            for wrapper in user_data.get("Conversation", []):
+                # Each wrapper is {"conversation_1": {...}} — take its one value.
+                for convo in wrapper.values():
+                    conversation_id = convo["conversation_id"]
+                    conversations.append(
+                        Conversation(
+                            user_id=user_id,
+                            conversation_id=conversation_id,
+                            turns=dialogues.get(conversation_id, []),
+                            liked_items=convo.get("user_likes", []),
+                            disliked_items=convo.get("user_dislikes", []),
+                            recommended_items=convo.get("rec_item", []),
+                        )
                     )
-                )
 
     return conversations
 
 
-def _normalize_role(role: str) -> str:
-    """Map dataset speaker labels to the "user"/"assistant" convention.
-
-    Unknown labels pass through unchanged rather than being dropped, so a schema
-    surprise in the real data is visible instead of silently swallowed.
-    """
-    return _ROLE_MAP.get(role, role.lower())
+def _line_role(line: str) -> str | None:
+    """Return the normalised role for a ``User:``/``Agent:`` line, else ``None``."""
+    for label, role in _ROLE_MAP.items():
+        if line.startswith(f"{label}:"):
+            return role
+    return None

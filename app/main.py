@@ -11,7 +11,7 @@ from crs.llm import ChatLLM
 
 # Where the cached FAISS index lives and the metadata to build it from if absent.
 _INDEX_DIR = "data/processed/movie_index"
-_METADATA_PATH = "data/sample/movie_metadata.json"
+_METADATA_PATH = "data/sample/item_map.json"
 # The chat UI lives next to this module so it's found regardless of the cwd.
 _STATIC_DIR = Path(__file__).parent / "static"
 
