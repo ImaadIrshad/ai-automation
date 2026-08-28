@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     # .env — it must never live in the codebase.
     llm_api_key: str = ""
 
+    # TMDB API key (free) used by data/enrich.py to fetch movie plots/genres.
+    # Blank -> enrichment is skipped and the catalogue stays title-only.
+    tmdb_api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

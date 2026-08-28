@@ -3,9 +3,12 @@ item_map.json (ASIN -> title), final_data.jsonl (structured), Conversation.txt
 (dialogue joined on conversation_id).
 """
 
+import json
+
 from data.loader import (
     Conversation,
     Movie,
+    clean_title,
     load_conversations,
     load_dialogues,
     load_movie_metadata,
@@ -43,6 +46,25 @@ def test_load_conversations_joins_dialogue() -> None:
     assert all(isinstance(c, Conversation) for c in convos)
     # The join actually attached turns to every conversation.
     assert all(c.turns for c in convos)
+
+
+def test_clean_title_strips_format_cruft() -> None:
+    assert clean_title("Never a Dull Moment [VHS]") == "Never a Dull Moment"
+    assert clean_title("No Highway In The Sky VHS") == "No Highway In The Sky"
+    assert clean_title("Nightmares &amp; Dreamscapes") == "Nightmares & Dreamscapes"
+    assert clean_title("Inception") == "Inception"  # already clean, untouched
+
+
+def test_load_movie_metadata_merges_enrichment(tmp_path) -> None:
+    item_map = tmp_path / "item_map.json"
+    item_map.write_text(json.dumps({"B1": "Inception [VHS]"}))
+    enrichment = tmp_path / "enrichment.json"
+    enrichment.write_text(json.dumps({"B1": {"genre": "Sci-Fi", "description": "Dreams."}}))
+
+    movies = load_movie_metadata(item_map, enrichment)
+    assert movies["B1"].title == "Inception"  # cleaned
+    assert movies["B1"].genre == "Sci-Fi"  # merged from enrichment
+    assert movies["B1"].description == "Dreams."
 
 
 def test_recommended_items_reference_real_movies() -> None:

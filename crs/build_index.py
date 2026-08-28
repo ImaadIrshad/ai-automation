@@ -17,11 +17,14 @@ from data.loader import load_movie_metadata
 
 _DEFAULT_DIR = "data/sample"
 _INDEX_DIR = "data/processed/movie_index"
+_ENRICHMENT_PATH = "data/processed/enrichment.json"
 _DEMO_QUERY = "a mind-bending sci-fi about dreams and reality"
 
 
 def main(data_dir: str = _DEFAULT_DIR) -> None:
-    movies = list(load_movie_metadata(f"{data_dir}/item_map.json").values())
+    movies = list(
+        load_movie_metadata(f"{data_dir}/item_map.json", _ENRICHMENT_PATH).values()
+    )
     print(f"Embedding {len(movies)} movies from {data_dir} with the local model...")
 
     embedder = LocalEmbedder()

@@ -21,11 +21,18 @@ The join key is ``conversation_id``: it appears in the structured records and is
 the block number in ``Conversation.txt``.
 """
 
+import html
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from crs.base import Turn  # reuse the same turn type the CRS models consume
+
+# Real titles carry store cruft like "[VHS]" / "(DVD)" or a trailing " VHS".
+# Strip it so the title reads cleanly and matches better against movie databases.
+_FORMAT_TAG = re.compile(r"\s*[\[(](?:VHS|DVD|Blu-?ray|4K|UHD)[\])]", re.IGNORECASE)
+_TRAILING_FORMAT = re.compile(r"\s+(?:VHS|DVD|Blu-?ray)\s*$", re.IGNORECASE)
 
 # The dataset labels speakers "User"/"Agent"; the CRSModel interface (and every
 # LLM chat API) speaks in "user"/"assistant". Normalise once, here, so no
@@ -65,13 +72,39 @@ class Conversation:
     recommended_items: list[str] = field(default_factory=list)
 
 
-def load_movie_metadata(path: str | Path) -> dict[str, Movie]:
-    """Read the ``ASIN -> title`` map into ``Movie`` objects."""
+def clean_title(raw: str) -> str:
+    """Normalise a raw store title: decode HTML entities, drop format tags."""
+    title = html.unescape(raw)
+    title = _FORMAT_TAG.sub("", title)
+    title = _TRAILING_FORMAT.sub("", title)
+    return re.sub(r"\s+", " ", title).strip()
+
+
+def load_movie_metadata(
+    path: str | Path, enrichment_path: str | Path | None = None
+) -> dict[str, Movie]:
+    """Read the ``ASIN -> title`` map into ``Movie`` objects.
+
+    If ``enrichment_path`` points at an existing ``ASIN -> {genre, description}``
+    file (produced by ``data/enrich.py``), those fields are merged in so movie
+    documents carry real plot/genre text instead of a bare title.
+    """
     raw: dict[str, str] = json.loads(Path(path).read_text())
-    return {
-        item_id: Movie(item_id=item_id, title=title)
-        for item_id, title in raw.items()
-    }
+
+    enrichment: dict[str, dict[str, str]] = {}
+    if enrichment_path is not None and Path(enrichment_path).exists():
+        enrichment = json.loads(Path(enrichment_path).read_text())
+
+    movies: dict[str, Movie] = {}
+    for item_id, title in raw.items():
+        extra = enrichment.get(item_id, {})
+        movies[item_id] = Movie(
+            item_id=item_id,
+            title=clean_title(title),
+            genre=extra.get("genre", ""),
+            description=extra.get("description", ""),
+        )
+    return movies
 
 
 def load_dialogues(path: str | Path) -> dict[int, list[Turn]]:
