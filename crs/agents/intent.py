@@ -23,8 +23,19 @@ from crs.llm import ChatLLM, Message
 
 # Genre keywords we can recognise deterministically in the fallback path.
 _GENRES = [
-    "sci-fi", "science fiction", "crime", "drama", "animation", "musical",
-    "comedy", "action", "romance", "thriller", "horror", "fantasy", "music",
+    "sci-fi",
+    "science fiction",
+    "crime",
+    "drama",
+    "animation",
+    "musical",
+    "comedy",
+    "action",
+    "romance",
+    "thriller",
+    "horror",
+    "fantasy",
+    "music",
 ]
 # Whole-word cues that flip a mentioned title from "liked" to "disliked".
 _NEGATIVE_CUE = re.compile(
@@ -108,9 +119,9 @@ def _heuristic_preferences(history: list[Turn], question: str) -> UserPreference
         bucket = disliked if _NEGATIVE_CUE.search(turn.content.lower()) else liked
         bucket.extend(titles)
 
-    all_user_text = " ".join(
-        t.content for t in history if t.role == "user"
-    ) + " " + question
+    all_user_text = (
+        " ".join(t.content for t in history if t.role == "user") + " " + question
+    )
     genres = [g for g in _GENRES if g in all_user_text.lower()]
     return UserPreferences(liked_titles=liked, disliked_titles=disliked, genres=genres)
 

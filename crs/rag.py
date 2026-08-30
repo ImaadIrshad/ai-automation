@@ -33,16 +33,12 @@ _SYSTEM_PROMPT = (
 class RAGModel(CRSModel):
     """Retrieval-grounded conversational recommender."""
 
-    def __init__(
-        self, retriever: Retriever, llm: ChatLLM, top_k: int = 5
-    ) -> None:
+    def __init__(self, retriever: Retriever, llm: ChatLLM, top_k: int = 5) -> None:
         self.retriever = retriever
         self.llm = llm
         self.top_k = top_k
 
-    async def respond(
-        self, history: list[Turn], question: str
-    ) -> AsyncIterator[str]:
+    async def respond(self, history: list[Turn], question: str) -> AsyncIterator[str]:
         query = _build_query(history, question)
         candidates = self.retriever.search(query, top_k=self.top_k)
         messages = build_messages(history, question, candidates)
@@ -67,7 +63,9 @@ def build_messages(
     history: list[Turn], question: str, candidates: Sequence[RetrievedMovie]
 ) -> list[Message]:
     """Assemble the grounded chat prompt sent to the LLM."""
-    system_content = f"{_SYSTEM_PROMPT}\n\nCandidate movies:\n{_format_candidates(candidates)}"
+    system_content = (
+        f"{_SYSTEM_PROMPT}\n\nCandidate movies:\n{_format_candidates(candidates)}"
+    )
     messages: list[Message] = [{"role": "system", "content": system_content}]
     # Replay the conversation so the model has the full context, then the new
     # question as the final user turn.

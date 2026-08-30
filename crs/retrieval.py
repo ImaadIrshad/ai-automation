@@ -17,9 +17,10 @@ the same "swap the implementation, keep the contract" idea as the CRS models.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, Sequence
+from typing import Protocol
 
 import faiss
 import numpy as np
@@ -53,7 +54,9 @@ class LocalEmbedder:
         from sentence_transformers import SentenceTransformer
 
         self._model = SentenceTransformer(model_name)
-        self.dim: int = self._model.get_sentence_embedding_dimension()
+        dim = self._model.get_sentence_embedding_dimension()
+        assert dim is not None, "embedding model has no fixed output dimension"
+        self.dim: int = dim
 
     def embed(self, texts: Sequence[str]) -> np.ndarray:
         vectors = self._model.encode(
@@ -105,7 +108,7 @@ class Retriever:
         self.movies = movies
 
     @classmethod
-    def build(cls, movies: list[Movie], embedder: Embedder) -> "Retriever":
+    def build(cls, movies: list[Movie], embedder: Embedder) -> Retriever:
         """Embed every movie blurb and load the vectors into a fresh index."""
         documents = [movie_to_document(m) for m in movies]
         vectors = embedder.embed(documents)
@@ -124,7 +127,7 @@ class Retriever:
         scores, indices = self.index.search(query_vector, k)
         return [
             RetrievedMovie(movie=self.movies[idx], score=float(score))
-            for score, idx in zip(scores[0], indices[0])
+            for score, idx in zip(scores[0], indices[0], strict=False)
             if idx != -1  # FAISS pads with -1 if fewer than k results exist
         ]
 
@@ -138,13 +141,12 @@ class Retriever:
         )
 
     @classmethod
-    def load(cls, directory: str | Path, embedder: Embedder) -> "Retriever":
+    def load(cls, directory: str | Path, embedder: Embedder) -> Retriever:
         """Reload a previously :meth:`save`d index. The embedder must match the
         one used to build it (same model, same dimension)."""
         path = Path(directory)
         index = faiss.read_index(str(path / cls._INDEX_FILE))
         movies = [
-            Movie(**data)
-            for data in json.loads((path / cls._MOVIES_FILE).read_text())
+            Movie(**data) for data in json.loads((path / cls._MOVIES_FILE).read_text())
         ]
         return cls(embedder, index, movies)

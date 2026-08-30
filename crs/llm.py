@@ -15,7 +15,10 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator, Sequence
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol, cast
+
+if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletionMessageParam
 
 Message = dict[str, str]
 
@@ -39,7 +42,7 @@ class FakeLLM:
         title = _first_candidate_title(messages)
         if title:
             reply = (
-                f'Based on what you\'re looking for, I\'d suggest "{title}". '
+                f"Based on what you're looking for, I'd suggest \"{title}\". "
                 "It lines up well with the preferences you described. "
                 "Want something in a similar vein?"
             )
@@ -79,9 +82,11 @@ class OpenAILLM:
         # stream=True yields the reply in deltas as the model generates it, so we
         # forward tokens to the user immediately instead of waiting for the whole
         # completion — the same streaming contract the fake honours.
+        # Our Message is a plain {role, content} dict; cast to the SDK's stricter
+        # param type so the stream=True overload resolves to an AsyncStream.
         completion = await self._client.chat.completions.create(
             model=self._model,
-            messages=list(messages),
+            messages=cast("list[ChatCompletionMessageParam]", list(messages)),
             stream=True,
         )
         async for chunk in completion:

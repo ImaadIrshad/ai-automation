@@ -28,7 +28,10 @@ def inspect(directory: str | Path) -> None:
     print(f"Conversations: {len(conversations)}")
 
     first = conversations[0]
-    titles = lambda ids: [movies[i].title for i in ids if i in movies]
+
+    def titles(ids: list[str]) -> list[str]:
+        return [movies[i].title for i in ids if i in movies]
+
     print(f"\nExample conversation (id {first.conversation_id}, user {first.user_id}):")
     print(f"  liked:       {titles(first.liked_items)}")
     print(f"  disliked:    {titles(first.disliked_items)}")

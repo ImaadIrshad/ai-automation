@@ -24,7 +24,9 @@ class RetrievalAgent:
         query = _preferences_to_query(preferences)
         # Over-fetch a little so that filtering out disliked titles still leaves
         # us with a full top_k of usable candidates.
-        candidates = self.retriever.search(query, top_k=top_k + len(preferences.disliked_titles))
+        candidates = self.retriever.search(
+            query, top_k=top_k + len(preferences.disliked_titles)
+        )
         disliked = {title.lower() for title in preferences.disliked_titles}
         kept = [c for c in candidates if c.movie.title.lower() not in disliked]
         return kept[:top_k]

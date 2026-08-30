@@ -4,7 +4,7 @@ These inject a fake retriever and the FakeLLM so the whole flow (query -> contex
 -> grounded prompt -> stream) runs offline, with no embeddings and no API key.
 """
 
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator
 
 import pytest
 
@@ -14,8 +14,12 @@ from crs.rag import RAGModel, build_messages
 from crs.retrieval import RetrievedMovie
 from data.loader import Movie
 
-_INCEPTION = Movie("m1", "Inception", "Sci-Fi", "A thief enters a dream to plant an idea.")
-_MATRIX = Movie("m2", "The Matrix", "Sci-Fi", "A hacker learns reality is a simulation.")
+_INCEPTION = Movie(
+    "m1", "Inception", "Sci-Fi", "A thief enters a dream to plant an idea."
+)
+_MATRIX = Movie(
+    "m2", "The Matrix", "Sci-Fi", "A hacker learns reality is a simulation."
+)
 
 
 class _FakeRetriever:

@@ -83,7 +83,9 @@ def _build_rag_model() -> CRSModel:
     """Wire up Approach 1 (RAG): shared retriever + selected LLM backend."""
     from crs.rag import RAGModel
 
-    return RAGModel(retriever=_load_retriever(), llm=_build_llm(), top_k=get_settings().top_k)
+    return RAGModel(
+        retriever=_load_retriever(), llm=_build_llm(), top_k=get_settings().top_k
+    )
 
 
 def _build_multi_agent_model() -> CRSModel:
@@ -135,4 +137,15 @@ async def config() -> dict[str, str]:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
+    """Liveness: the process is up and serving."""
     return {"status": "ok"}
+
+
+@app.get("/ready")
+async def ready() -> dict[str, str]:
+    """Readiness: the CRS model (and its retriever/index, if any) is built.
+
+    ``model`` is constructed at startup, so reaching this handler means the
+    selected approach loaded successfully and the app can serve requests.
+    """
+    return {"status": "ready", "approach": get_settings().approach}

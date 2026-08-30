@@ -29,9 +29,7 @@ _TMDB = "https://api.themoviedb.org/3"
 _OUT = "data/processed/enrichment.json"
 
 
-def parse_search_result(
-    result: dict, genre_map: dict[int, str]
-) -> dict[str, str]:
+def parse_search_result(result: dict, genre_map: dict[int, str]) -> dict[str, str]:
     """Turn a TMDB search hit into our ``{genre, description}`` shape.
 
     Pure and network-free so it can be unit-tested without a key.
@@ -68,9 +66,7 @@ def main(data_dir: str = "data/sample") -> None:
         )
         return
 
-    item_map: dict[str, str] = json.loads(
-        Path(f"{data_dir}/item_map.json").read_text()
-    )
+    item_map: dict[str, str] = json.loads(Path(f"{data_dir}/item_map.json").read_text())
     out_path = Path(_OUT)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     # Resume: keep whatever we've already fetched.

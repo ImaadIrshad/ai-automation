@@ -21,9 +21,15 @@ from crs.multi_agent import MultiAgentModel
 from crs.retrieval import RetrievedMovie
 from data.loader import Movie
 
-_INCEPTION = Movie("m1", "Inception", "Sci-Fi", "A thief enters a dream to plant an idea.")
-_LALA = Movie("m2", "La La Land", "Musical", "A jazz pianist and an actress fall in love.")
-_MATRIX = Movie("m3", "The Matrix", "Sci-Fi", "A hacker learns reality is a simulation.")
+_INCEPTION = Movie(
+    "m1", "Inception", "Sci-Fi", "A thief enters a dream to plant an idea."
+)
+_LALA = Movie(
+    "m2", "La La Land", "Musical", "A jazz pianist and an actress fall in love."
+)
+_MATRIX = Movie(
+    "m3", "The Matrix", "Sci-Fi", "A hacker learns reality is a simulation."
+)
 
 
 class _FakeRetriever:
@@ -69,7 +75,9 @@ async def test_intent_falls_back_to_heuristics_on_non_json() -> None:
 
 
 def test_parse_preferences_valid_json() -> None:
-    prefs = _parse_preferences('{"liked_titles": ["A"], "disliked_titles": [], "genres": ["drama"]}')
+    prefs = _parse_preferences(
+        '{"liked_titles": ["A"], "disliked_titles": [], "genres": ["drama"]}'
+    )
     assert prefs is not None
     assert prefs.liked_titles == ["A"]
     assert prefs.genres == ["drama"]

@@ -35,9 +35,24 @@ class KeywordEmbedder:
 
 _MOVIES = [
     Movie("m1", "Inception", "Sci-Fi", "A thief enters a dream to plant an idea."),
-    Movie("m2", "Interstellar", "Sci-Fi", "Explorers travel through space to save humanity."),
-    Movie("m3", "The Godfather", "Crime", "A crime family patriarch hands over his empire."),
-    Movie("m4", "Spirited Away", "Animation", "An animation about a girl in a spirit world."),
+    Movie(
+        "m2",
+        "Interstellar",
+        "Sci-Fi",
+        "Explorers travel through space to save humanity.",
+    ),
+    Movie(
+        "m3",
+        "The Godfather",
+        "Crime",
+        "A crime family patriarch hands over his empire.",
+    ),
+    Movie(
+        "m4",
+        "Spirited Away",
+        "Animation",
+        "An animation about a girl in a spirit world.",
+    ),
     Movie("m5", "Whiplash", "Music", "A drummer chases greatness in music."),
 ]
 

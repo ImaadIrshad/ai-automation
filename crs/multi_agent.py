@@ -32,18 +32,14 @@ from crs.retrieval import Retriever
 class MultiAgentModel(CRSModel):
     """Orchestrates intent -> retrieval -> response behind the CRSModel contract."""
 
-    def __init__(
-        self, retriever: Retriever, llm: ChatLLM, top_k: int = 5
-    ) -> None:
+    def __init__(self, retriever: Retriever, llm: ChatLLM, top_k: int = 5) -> None:
         # The intent and response agents talk to the LLM; retrieval is pure code.
         self.intent_agent = IntentAgent(llm)
         self.retrieval_agent = RetrievalAgent(retriever)
         self.response_agent = ResponseAgent(llm)
         self.top_k = top_k
 
-    async def respond(
-        self, history: list[Turn], question: str
-    ) -> AsyncIterator[str]:
+    async def respond(self, history: list[Turn], question: str) -> AsyncIterator[str]:
         # Stage 1 + 2 run to completion (their outputs aren't shown to the user).
         preferences = await self.intent_agent.extract(history, question)
         candidates = self.retrieval_agent.retrieve(preferences, top_k=self.top_k)

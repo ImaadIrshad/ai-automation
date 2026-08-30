@@ -59,7 +59,9 @@ def test_load_movie_metadata_merges_enrichment(tmp_path) -> None:
     item_map = tmp_path / "item_map.json"
     item_map.write_text(json.dumps({"B1": "Inception [VHS]"}))
     enrichment = tmp_path / "enrichment.json"
-    enrichment.write_text(json.dumps({"B1": {"genre": "Sci-Fi", "description": "Dreams."}}))
+    enrichment.write_text(
+        json.dumps({"B1": {"genre": "Sci-Fi", "description": "Dreams."}})
+    )
 
     movies = load_movie_metadata(item_map, enrichment)
     assert movies["B1"].title == "Inception"  # cleaned
