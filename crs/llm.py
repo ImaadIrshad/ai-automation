@@ -62,20 +62,24 @@ class FakeLLM:
 
 
 class OpenAILLM:
-    """Real streaming OpenAI chat client — the genuine generation backend.
+    """Streaming chat client for OpenAI or any OpenAI-compatible provider.
 
     Selected automatically when an API key is configured (see ``app.main``). The
-    key is read from settings/.env and never hardcoded. Our message shape already
-    matches OpenAI's chat format, so nothing upstream changes when we swap this in
-    for the fake — that's the whole point of the ``ChatLLM`` seam.
+    key is read from settings/.env and never hardcoded. A ``base_url`` lets the
+    same client talk to a free compatible provider (Groq, Google AI Studio,
+    OpenRouter) or a local server (Ollama) — the OpenAI SDK just points elsewhere,
+    and nothing upstream changes. That's the whole point of the ``ChatLLM`` seam.
     """
 
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini") -> None:
+    def __init__(
+        self, api_key: str, model: str = "gpt-4o-mini", base_url: str | None = None
+    ) -> None:
         # Lazy import so the SDK is only needed on the real path, not in the fast
         # offline tests that use FakeLLM.
         from openai import AsyncOpenAI
 
-        self._client = AsyncOpenAI(api_key=api_key)
+        # base_url=None makes the SDK use OpenAI's own endpoint.
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url or None)
         self._model = model
 
     async def stream(self, messages: Sequence[Message]) -> AsyncIterator[str]:

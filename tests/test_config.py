@@ -5,8 +5,9 @@ from app.main import _EchoModel, build_model
 
 
 def test_settings_defaults() -> None:
-    # With no env overrides the app must boot on safe defaults.
-    settings = Settings()
+    # With no env overrides the app must boot on safe defaults. Pass
+    # _env_file=None so a developer's local .env can't affect this test.
+    settings = Settings(_env_file=None)
     assert settings.approach == "echo"
     assert settings.top_k == 5
     assert settings.llm_api_key == ""
@@ -16,7 +17,7 @@ def test_settings_read_env_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
     # CRS_-prefixed env vars override defaults and are coerced to the field type.
     monkeypatch.setenv("CRS_APPROACH", "rag")
     monkeypatch.setenv("CRS_TOP_K", "10")
-    settings = Settings()
+    settings = Settings(_env_file=None)  # isolate from any local .env
     assert settings.approach == "rag"
     assert settings.top_k == 10  # parsed from string to int
 

@@ -75,7 +75,11 @@ def _build_llm() -> ChatLLM:
 
     settings = get_settings()
     if settings.llm_api_key:
-        return OpenAILLM(api_key=settings.llm_api_key, model=settings.llm_model)
+        return OpenAILLM(
+            api_key=settings.llm_api_key,
+            model=settings.llm_model,
+            base_url=settings.llm_base_url or None,
+        )
     return FakeLLM()
 
 

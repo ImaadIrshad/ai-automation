@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # .env — it must never live in the codebase.
     llm_api_key: str = ""
 
+    # Optional OpenAI-compatible base URL. Blank -> real OpenAI. Set it to use a
+    # free compatible provider instead (e.g. Groq: https://api.groq.com/openai/v1
+    # with a Llama model), or a local server like Ollama.
+    llm_base_url: str = ""
+
     # TMDB API key (free) used by data/enrich.py to fetch movie plots/genres.
     # Blank -> enrichment is skipped and the catalogue stays title-only.
     tmdb_api_key: str = ""
