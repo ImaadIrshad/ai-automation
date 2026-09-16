@@ -10,7 +10,7 @@ import pytest
 
 from crs.base import Turn
 from crs.llm import FakeLLM
-from crs.rag import RAGModel, build_messages
+from crs.rag import RAGModel, _filter_candidates, build_messages
 from crs.retrieval import RetrievedMovie
 from data.loader import Movie
 
@@ -20,6 +20,7 @@ _INCEPTION = Movie(
 _MATRIX = Movie(
     "m2", "The Matrix", "Sci-Fi", "A hacker learns reality is a simulation."
 )
+_INTERSTELLAR = Movie("m3", "Interstellar [2014]", "", "Explorers seek a new home.")
 
 
 class _FakeRetriever:
@@ -51,6 +52,25 @@ async def test_respond_handles_empty_retrieval() -> None:
     # Degrades gracefully instead of crashing or naming a nonexistent movie.
     assert text.strip()
     assert "Inception" not in text
+
+
+def test_filter_excludes_named_movie() -> None:
+    # "movies like interstellar" must not recommend Interstellar back.
+    candidates = [RetrievedMovie(_INTERSTELLAR, 0.9), RetrievedMovie(_MATRIX, 0.8)]
+    kept = _filter_candidates(candidates, "movies like interstellar", top_k=5)
+    titles = [c.movie.title for c in kept]
+    assert "Interstellar [2014]" not in titles
+    assert "The Matrix" in titles
+
+
+def test_filter_dedupes_repeated_titles() -> None:
+    dup = [
+        RetrievedMovie(_MATRIX, 0.9),
+        RetrievedMovie(_MATRIX, 0.8),
+        RetrievedMovie(_INCEPTION, 0.7),
+    ]
+    kept = _filter_candidates(dup, "a sci-fi movie", top_k=5)
+    assert [c.movie.title for c in kept] == ["The Matrix", "Inception"]
 
 
 def test_build_messages_structure() -> None:

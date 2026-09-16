@@ -102,13 +102,18 @@ class OpenAILLM:
 def _first_candidate_title(messages: Sequence[Message]) -> str | None:
     """Pull the first retrieved movie title out of the grounded prompt.
 
-    The RAG prompt lists candidates as ``- Title (Genre): description`` lines in a
-    system message; the fake reads the first one so its reply feels grounded.
+    Candidates are listed as ``- Title (Genre): description`` lines *after* a
+    "Candidate movies:" header. We parse only that section so the fake isn't
+    fooled by unrelated ``- `` bullets elsewhere in the prompt (e.g. rules).
     """
+    marker = "Candidate movies:"
     for message in messages:
-        for line in message.get("content", "").splitlines():
+        content = message.get("content", "")
+        if marker not in content:
+            continue
+        for line in content.split(marker, 1)[1].splitlines():
             stripped = line.strip()
             if stripped.startswith("- "):
                 # "- Inception (Sci-Fi): ..." -> "Inception"
-                return stripped[2:].split(" (")[0].strip()
+                return stripped[2:].split(" (")[0].split(": ")[0].strip()
     return None

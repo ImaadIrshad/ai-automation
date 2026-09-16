@@ -126,6 +126,20 @@
       return el;
     }
 
+    // Render a reply safely: escape HTML, turn **bold** into real bold, and
+    // strip any stray Markdown (tables, headings, loose asterisks) so replies
+    // read as clean prose even if the model over-formats.
+    function renderReply(text) {
+      let s = text
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      s = s.replace(/^\s*\|.*$/gm, "")            // markdown table rows
+           .replace(/^\s*[-|:]{3,}\s*$/gm, "")     // table separators / rules
+           .replace(/^#{1,6}\s*/gm, "");           // headings
+      s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"); // bold
+      s = s.replace(/(^|\s)\*+(\S)/g, "$1$2").replace(/\*/g, ""); // loose asterisks
+      return s.replace(/\n{3,}/g, "\n\n").trim();
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const question = input.value.trim();
@@ -154,9 +168,11 @@
           const { done, value } = await reader.read();
           if (done) break;
           acc += decoder.decode(value, { stream: true });
-          botEl.textContent = acc;           // live streaming update
+          // Render live, with a blinking cursor at the end while streaming.
+          botEl.innerHTML = renderReply(acc) + '<span class="cursor">▋</span>';
           log.scrollTop = log.scrollHeight;
         }
+        botEl.innerHTML = renderReply(acc);   // final render, cursor removed
         history.push({ role: "assistant", content: acc });
       } catch (err) {
         botEl.textContent = "⚠️ Something went wrong reaching the server.";
