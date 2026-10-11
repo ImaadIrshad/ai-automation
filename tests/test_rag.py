@@ -10,7 +10,7 @@ import pytest
 
 from crs.base import Turn
 from crs.llm import FakeLLM
-from crs.rag import RAGModel, _filter_candidates, build_messages
+from crs.rag import RAGModel, _build_query, _filter_candidates, build_messages
 from crs.retrieval import RetrievedMovie
 from data.loader import Movie
 
@@ -52,6 +52,13 @@ async def test_respond_handles_empty_retrieval() -> None:
     # Degrades gracefully instead of crashing or naming a nonexistent movie.
     assert text.strip()
     assert "Inception" not in text
+
+
+def test_build_query_strips_negated_terms() -> None:
+    # "but not superheroes" must not leak into the retrieval query.
+    query = _build_query([], "Something like The Godfather, but not superheroes")
+    assert "superhero" not in query.lower()
+    assert "godfather" in query.lower()
 
 
 def test_filter_excludes_named_movie() -> None:

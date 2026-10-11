@@ -94,17 +94,32 @@ def _base_title(title: str) -> str:
     return re.sub(r"[\[(].*?[\])]", "", title).strip().lower()
 
 
+# Everything from a negation word onward is an *exclusion*, not something to
+# retrieve ("...but not superheroes" must not pull in superhero movies).
+_NEGATION = re.compile(
+    r"\s*\b(?:but not|but no|without|nothing|not|no)\b.*", re.IGNORECASE | re.DOTALL
+)
+
+
+def _positive_query(text: str) -> str:
+    """Drop negated clauses so retrieval matches what the user *wants*."""
+    stripped = _NEGATION.sub("", text).strip()
+    return stripped if len(stripped) >= 3 else text
+
+
 def _build_query(history: list[Turn], question: str) -> str:
     """Compose the retrieval query from recent user turns plus the new question.
 
     Preferences are expressed by the *user*, and often across turns ("I like
     sci-fi" ... later ... "something recent"). Including the last couple of user
     turns alongside the new question makes retrieval reflect the whole ask, not
-    just the final line.
+    just the final line. Negated clauses are stripped from each segment so we
+    don't retrieve the very things the user is ruling out — the full question
+    still goes to the LLM, which honours the exclusion when it replies.
     """
     user_turns = [t.content for t in history if t.role == "user"]
     recent = user_turns[-2:]
-    return " ".join([*recent, question])
+    return " ".join(_positive_query(s) for s in [*recent, question])
 
 
 def build_messages(
