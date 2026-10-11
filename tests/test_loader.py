@@ -9,6 +9,7 @@ from data.loader import (
     Conversation,
     Movie,
     clean_title,
+    load_catalogue,
     load_conversations,
     load_dialogues,
     load_movie_metadata,
@@ -67,6 +68,16 @@ def test_load_movie_metadata_merges_enrichment(tmp_path) -> None:
     assert movies["B1"].title == "Inception"  # cleaned
     assert movies["B1"].genre == "Sci-Fi"  # merged from enrichment
     assert movies["B1"].description == "Dreams."
+
+
+def test_load_catalogue_rich_format(tmp_path) -> None:
+    path = tmp_path / "catalogue.json"
+    entry = {"title": "Inception (2010)", "genre": "Sci-Fi", "description": "Dreams."}
+    path.write_text(json.dumps({"123": entry}))
+    movies = load_catalogue(path)
+    assert movies["123"].title == "Inception (2010)"
+    assert movies["123"].genre == "Sci-Fi"
+    assert movies["123"].description == "Dreams."
 
 
 def test_recommended_items_reference_real_movies() -> None:

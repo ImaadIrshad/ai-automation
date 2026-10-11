@@ -76,6 +76,21 @@ python -m data.inspect data/raw/Movie      # summarise a dataset
 python -m crs.build_index data/raw/Movie   # (re)build the FAISS index
 ```
 
+### Recognizable demo catalogue
+
+LLM-Redial's item catalogue is mostly obscure Amazon VHS/DVD listings, so live
+recommendations over it are underwhelming. Since the pipeline is
+dataset-agnostic (everything flows through `data/loader.py`), the demo indexes a
+richer catalogue of ~3,000 well-known films fetched from TMDB:
+
+```bash
+python -m data.fetch_tmdb_catalogue        # fetch + index recognizable movies
+```
+
+This swaps **only the retrieval catalogue** — LLM-Redial is still the dataset of
+record for the two CRS approaches and any evaluation. The app prefers this
+catalogue's index when present and otherwise falls back to the sample/LLM-Redial.
+
 ## Requirements
 
 - **Python 3.10** (the pinned `numpy`/`faiss-cpu` wheels target it).

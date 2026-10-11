@@ -80,6 +80,24 @@ def clean_title(raw: str) -> str:
     return re.sub(r"\s+", " ", title).strip()
 
 
+def load_catalogue(path: str | Path) -> dict[str, Movie]:
+    """Read a rich catalogue (``id -> {title, genre, description}``) into Movies.
+
+    Used for the TMDB demo catalogue of recognizable films; a self-contained
+    single file, unlike the split LLM-Redial schema.
+    """
+    raw: dict[str, dict[str, str]] = json.loads(Path(path).read_text())
+    return {
+        item_id: Movie(
+            item_id=item_id,
+            title=clean_title(fields["title"]),
+            genre=fields.get("genre", ""),
+            description=fields.get("description", ""),
+        )
+        for item_id, fields in raw.items()
+    }
+
+
 def load_movie_metadata(
     path: str | Path, enrichment_path: str | Path | None = None
 ) -> dict[str, Movie]:

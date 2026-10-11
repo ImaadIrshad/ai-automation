@@ -14,6 +14,8 @@ _INDEX_DIR = "data/processed/movie_index"
 _METADATA_PATH = "data/sample/item_map.json"
 # Optional TMDB plots/genres (data/enrich.py); merged in when present.
 _ENRICHMENT_PATH = "data/processed/enrichment.json"
+# Recognizable demo catalogue (data/fetch_tmdb_catalogue.py); preferred if present.
+_CATALOGUE_PATH = "data/processed/tmdb_catalogue.json"
 # The chat UI lives next to this module so it's found regardless of the cwd.
 _STATIC_DIR = Path(__file__).parent / "static"
 
@@ -54,13 +56,19 @@ def _load_retriever():
     the default 'echo' path stays lightweight.
     """
     from crs.retrieval import LocalEmbedder, Retriever
-    from data.loader import load_movie_metadata
+    from data.loader import load_catalogue, load_movie_metadata
 
     embedder = LocalEmbedder()
     try:
         return Retriever.load(_INDEX_DIR, embedder)
     except (FileNotFoundError, RuntimeError):
-        movies = list(load_movie_metadata(_METADATA_PATH, _ENRICHMENT_PATH).values())
+        # Fresh clone with no cached index: prefer the recognizable TMDB
+        # catalogue if it's been fetched, else fall back to the sample data.
+        if Path(_CATALOGUE_PATH).exists():
+            movies = list(load_catalogue(_CATALOGUE_PATH).values())
+        else:
+            data = load_movie_metadata(_METADATA_PATH, _ENRICHMENT_PATH)
+            movies = list(data.values())
         return Retriever.build(movies, embedder)
 
 
