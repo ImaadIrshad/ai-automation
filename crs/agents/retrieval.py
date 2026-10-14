@@ -9,7 +9,7 @@ user explicitly disliked before handing candidates to the response agent.
 from __future__ import annotations
 
 from crs.agents.intent import UserPreferences
-from crs.retrieval import RetrievedMovie, Retriever
+from crs.retrieval import RetrievedMovie, Retriever, strip_negations
 
 
 class RetrievalAgent:
@@ -36,9 +36,11 @@ def _preferences_to_query(preferences: UserPreferences) -> str:
     """Compose a retrieval query from the structured preferences.
 
     Genres and liked titles sharpen the search; the raw free text keeps whatever
-    nuance the structured fields missed. Disliked titles are handled by filtering
-    (below), not by putting them in the query — you don't want to *retrieve*
-    things similar to what the user rejected.
+    nuance the structured fields missed, with negated clauses stripped so we
+    don't retrieve what the user is ruling out. Disliked titles are handled by
+    filtering (below), not by putting them in the query — you don't want to
+    *retrieve* things similar to what the user rejected.
     """
-    parts = [*preferences.genres, *preferences.liked_titles, preferences.free_text]
+    free_text = strip_negations(preferences.free_text)
+    parts = [*preferences.genres, *preferences.liked_titles, free_text]
     return " ".join(part for part in parts if part).strip()

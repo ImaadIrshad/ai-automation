@@ -14,7 +14,7 @@ from crs.agents.intent import (
     UserPreferences,
     _parse_preferences,
 )
-from crs.agents.retrieval import RetrievalAgent
+from crs.agents.retrieval import RetrievalAgent, _preferences_to_query
 from crs.base import Turn
 from crs.llm import FakeLLM
 from crs.multi_agent import MultiAgentModel
@@ -99,3 +99,13 @@ def test_retrieval_agent_filters_disliked() -> None:
     titles = {c.movie.title for c in kept}
     assert "La La Land" not in titles
     assert "Inception" in titles
+
+
+def test_retrieval_query_strips_negation() -> None:
+    # Same negation handling as RAG: "not superheroes" must not enter the query.
+    prefs = UserPreferences(
+        free_text="something like The Godfather but not superheroes"
+    )
+    query = _preferences_to_query(prefs)
+    assert "superhero" not in query.lower()
+    assert "godfather" in query.lower()

@@ -17,6 +17,7 @@ the same "swap the implementation, keep the contract" idea as the CRS models.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +27,25 @@ import faiss
 import numpy as np
 
 from data.loader import Movie
+
+# Everything from a negation word onward is an *exclusion*, not something to
+# retrieve ("...but not superheroes" must not pull in superhero movies).
+_NEGATION = re.compile(
+    r"\s*\b(?:but not|but no|without|nothing|not|no)\b.*", re.IGNORECASE | re.DOTALL
+)
+
+
+def strip_negations(text: str) -> str:
+    """Drop negated clauses from a search query.
+
+    Vector search matches words, not logic, so "...but not superheroes" would
+    otherwise retrieve the very thing the user is ruling out. Remove everything
+    from the first negation word onward so retrieval reflects what the user
+    *wants*; callers still pass the full request to the LLM, which honours the
+    exclusion when it replies. Shared by both the RAG and multi-agent paths.
+    """
+    stripped = _NEGATION.sub("", text).strip()
+    return stripped if len(stripped) >= 3 else text
 
 
 class Embedder(Protocol):
