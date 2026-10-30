@@ -103,6 +103,21 @@ catalogue's index when present and otherwise falls back to the sample/LLM-Redial
 - Tests: `pytest -q` (includes a concurrency test proving overlapping requests
   don't block each other).
 
+## Evaluation
+
+`python -m crs.evaluate` scores both approaches on held-out LLM-Redial dialogues:
+does the dataset's ground-truth `rec_item` get retrieved (recall@k) and named in
+the reply (end-to-end hit rate)? It runs on the LLM-Redial catalogue, not the
+demo one, so the ground truth is in the index.
+
+Honest findings: scores are low (recall@20 ≈ 4%), which is expected — it's an
+**exact-match** metric over ~9,700 movies where the ground truth is one arbitrary
+pick, so a genuinely good *different* recommendation counts as a miss. The useful
+signals: performance is **bottlenecked by retrieval** (end-to-end ≈ recall), and
+the **multi-agent system did not beat RAG** on this metric — the extra complexity
+didn't pay off here. Next steps: hybrid retrieval, a reranker, and a fairer
+genre-level metric.
+
 ## Limitations & next steps
 
 - Without the TMDB key the real catalogue is **title-only**, so retrieval matches
