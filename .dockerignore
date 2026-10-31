@@ -1,0 +1,22 @@
+# Files Docker should NOT copy into the image (keeps it small and secrets out).
+
+# Virtualenv and git history — machine-specific / not needed in the container.
+.venv/
+.git/
+.gitignore
+
+# Secrets — never bake API keys into an image.
+.env
+.env.*
+
+# Python caches and tool state.
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Large raw data and built indexes (gitignored). The app falls back to the small
+# committed data/sample/ when these aren't present; real data is mounted later.
+data/raw/
+data/processed/
