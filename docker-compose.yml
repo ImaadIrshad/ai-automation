@@ -1,0 +1,11 @@
+# Run the whole app with one command:  docker compose up
+# (Needs Docker Desktop installed, and a local .env with your keys.)
+
+services:
+  app:
+    build: .                 # build the image from the Dockerfile in this folder
+    ports:
+      - "8000:8000"          # container's port 8000 -> http://localhost:8000
+    env_file:
+      - .env                 # inject your keys/settings at run time (never baked in)
+    restart: unless-stopped  # bring it back up if it crashes
