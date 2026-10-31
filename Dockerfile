@@ -1,0 +1,20 @@
+# Start from a slim official Python 3.10 image (matches the project's target).
+FROM python:3.10-slim
+
+# All app files live under /app inside the container.
+WORKDIR /app
+
+# Install dependencies first, as their own layer: Docker caches this step and
+# only re-runs it when requirements.txt changes, so code edits rebuild fast.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application code into the image.
+COPY . .
+
+# Document that the service listens on port 8000.
+EXPOSE 8000
+
+# Start the API. --host 0.0.0.0 makes it reachable from outside the container
+# (localhost inside the container would not be).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
