@@ -26,6 +26,10 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
 
-      # 5. Run the test suite — fails the check if any test fails.
+      # 5. Type-check (PEP 484): fails on any type inconsistency.
+      - name: Type-check with mypy
+        run: mypy app crs data
+
+      # 6. Run the test suite — fails the check if any test fails.
       - name: Run tests
         run: pytest -q
