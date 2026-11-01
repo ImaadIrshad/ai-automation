@@ -22,6 +22,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # 4. Run the test suite — fails the check if any test fails.
+      # 4. Lint: fails the check (non-zero exit) on any PEP 8 / style issue.
+      - name: Lint with ruff
+        run: ruff check .
+
+      # 5. Run the test suite — fails the check if any test fails.
       - name: Run tests
         run: pytest -q
