@@ -1,0 +1,27 @@
+# Continuous Integration: runs automatically on GitHub for every push / PR.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest  # GitHub spins up a fresh Linux machine
+    steps:
+      # 1. Get the code onto the runner.
+      - uses: actions/checkout@v4
+
+      # 2. Install the Python version the project targets.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      # 3. Install the project's dependencies.
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. Run the test suite — fails the check if any test fails.
+      - name: Run tests
+        run: pytest -q
