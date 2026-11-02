@@ -9,6 +9,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download the embedding model at build time, so the container starts fast
+# and works offline (otherwise it fetches ~80MB on the first request). Cached as
+# its own layer, so it only re-runs when requirements change.
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
 # Copy the rest of the application code into the image.
 COPY . .
 
