@@ -8,4 +8,9 @@ services:
       - "8000:8000"          # container's port 8000 -> http://localhost:8000
     env_file:
       - .env                 # inject your keys/settings at run time (never baked in)
+    volumes:
+      # Share the real built index from your machine into the container, so it
+      # recommends from the full catalogue instead of the tiny committed sample.
+      # (The index is kept out of the image to keep it small — see .dockerignore.)
+      - ./data/processed:/app/data/processed
     restart: unless-stopped  # bring it back up if it crashes
