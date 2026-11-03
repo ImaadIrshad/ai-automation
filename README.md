@@ -61,15 +61,28 @@ CRS_APPROACH=rag uvicorn app.main:app
 Runs out of the box with **no API key and no dataset**: a small committed sample
 (`data/sample/`) and an offline `FakeLLM` keep the whole pipeline exercisable.
 
+### Run with Docker (optional)
+
+With Docker installed, one command builds the image and starts the service:
+
+```bash
+docker compose up        # serves http://localhost:8000
+```
+
+It injects your `.env` at runtime and mounts the built index into the container
+(see `Dockerfile` and `docker-compose.yml`).
+
 ## Turning on the real thing (two independent "dials")
 
 | Dial | How | Effect |
 | --- | --- | --- |
-| **Real LLM** | put `CRS_LLM_API_KEY` in `.env` | swaps `FakeLLM` → `OpenAILLM`, real generated replies |
+| **Real LLM** | put an API key in `.env` — OpenAI, or a **free** OpenAI-compatible provider (e.g. Groq) via `CRS_LLM_BASE_URL` | swaps `FakeLLM` → real streamed replies |
 | **Real data** | place LLM-Redial Movie files in `data/raw/Movie/` (gitignored) and point the loader there | 9,687 real movies instead of the sample |
 | **Better retrieval** | put a free `CRS_TMDB_API_KEY` in `.env`, run `python -m data.enrich data/raw/Movie` | adds plots/genres so retrieval matches meaning, not just title words |
 
-Copy `.env.example` to `.env` to configure. Nothing secret is ever committed.
+Copy `.env.example` to `.env` to configure. Nothing secret is ever committed. The
+app can run **entirely free**: a local embedding model, a free LLM provider (e.g.
+Groq), and a free TMDB key — no paid API required.
 
 ```bash
 python -m data.inspect data/raw/Movie      # summarise a dataset
@@ -81,7 +94,7 @@ python -m crs.build_index data/raw/Movie   # (re)build the FAISS index
 LLM-Redial's item catalogue is mostly obscure Amazon VHS/DVD listings, so live
 recommendations over it are underwhelming. Since the pipeline is
 dataset-agnostic (everything flows through `data/loader.py`), the demo indexes a
-richer catalogue of ~3,000 well-known films fetched from TMDB:
+richer catalogue of ~10,000 well-known films fetched from TMDB:
 
 ```bash
 python -m data.fetch_tmdb_catalogue        # fetch + index recognizable movies
@@ -102,6 +115,7 @@ catalogue's index when present and otherwise falls back to the sample/LLM-Redial
   (`ruff check . && mypy app crs data`).
 - Tests: `pytest -q` (includes a concurrency test proving overlapping requests
   don't block each other).
+- **CI** (GitHub Actions) runs ruff + mypy + pytest automatically on every push.
 
 ## Evaluation
 
