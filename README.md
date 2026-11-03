@@ -132,9 +132,26 @@ the **multi-agent system did not beat RAG** on this metric — the extra complex
 didn't pay off here. Next steps: hybrid retrieval, a reranker, and a fairer
 genre-level metric.
 
-## Limitations & next steps
+## Limitations & how I'd extend it
 
-- Without the TMDB key the real catalogue is **title-only**, so retrieval matches
-  title words rather than meaning — enrichment fixes this.
-- `FakeLLM` is a scripted stand-in; real reasoning needs the OpenAI key.
-- See [`docs/architecture.md`](docs/architecture.md) for the full list.
+**Honest limitations:**
+- Recommendation quality is bounded by **retrieval** — the evaluation showed the
+  ground-truth movie often isn't in the retrieved set, and generation can only
+  recommend what retrieval surfaces.
+- `FakeLLM` is a scripted stand-in; genuine reasoning needs a real LLM key.
+- Negation handling is a heuristic (it strips `not X` clauses from the retrieval
+  query) — it covers common phrasings but isn't a full language parser.
+
+**What I'd build next, in rough priority order:**
+1. **Better retrieval** — the eval pinned this as the bottleneck: add hybrid
+   (keyword + semantic) search and a cross-encoder **reranker** over the top-k.
+2. **A fairer evaluation metric** — exact-match recall understates quality; score
+   on genre/category overlap, or use an LLM to judge relevance.
+3. **Conversation memory** — persist sessions (e.g. SQLite) so preferences carry
+   across turns and return visits, not just within one request.
+4. **Serve-time hardening** — response caching, timeouts/retries on the LLM call,
+   and rate-limiting/auth on the public endpoint.
+5. **Observability** — structured logs and per-approach latency/quality metrics,
+   to A/B RAG vs multi-agent on real traffic.
+
+See [`docs/architecture.md`](docs/architecture.md) for the full design rationale.
