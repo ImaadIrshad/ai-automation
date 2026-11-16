@@ -6,80 +6,147 @@
   <title>Movie CRS</title>
   <style>
     :root {
-      --bg: #0f1115;
-      --panel: #171a21;
-      --panel-2: #1e222b;
-      --text: #e6e8ee;
-      --muted: #9aa3b2;
-      --accent: #6c8cff;
-      --user: #2a3350;
-      --border: #262b36;
+      --bg: #0b0e14;
+      --panel: #141922;
+      --panel-2: #1b2130;
+      --text: #e8eaf0;
+      --muted: #8b94a7;
+      --accent: #7c8cff;
+      --accent-2: #a06bff;
+      --border: #232a38;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     }
     @media (prefers-color-scheme: light) {
       :root {
-        --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f6;
-        --text: #1a1d24; --muted: #5b6472; --accent: #3b5bfd;
-        --user: #dfe6ff; --border: #e3e6ec;
+        --bg: #f4f6fb; --panel: #ffffff; --panel-2: #eef1f7;
+        --text: #141821; --muted: #5b6474; --accent: #4b63f5; --accent-2: #8b5cf6;
+        --border: #e4e8f0; --shadow: 0 10px 30px rgba(20, 30, 60, 0.08);
       }
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      display: flex; justify-content: center; min-height: 100vh;
+      margin: 0; min-height: 100vh; color: var(--text);
+      background:
+        radial-gradient(1200px 500px at 50% -10%, rgba(124, 140, 255, 0.14), transparent 70%),
+        var(--bg);
+      font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+      display: flex; justify-content: center;
     }
     .app {
-      width: 100%; max-width: 720px; display: flex; flex-direction: column;
-      height: 100vh; padding: 16px;
+      width: 100%; max-width: 760px; height: 100vh;
+      display: flex; flex-direction: column; padding: 20px 16px;
     }
-    header { padding: 8px 4px 16px; }
-    h1 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; }
-    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    /* Header */
+    header { display: flex; align-items: center; gap: 12px; padding: 4px 4px 18px; }
+    .logo {
+      width: 40px; height: 40px; flex: none; border-radius: 12px; font-size: 20px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 6px 16px rgba(124, 140, 255, 0.35);
+    }
+    h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -0.2px;
+         display: flex; align-items: center; gap: 8px; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
     .badge {
-      display: inline-block; font-size: 12px; color: var(--accent);
-      background: var(--panel-2); border: 1px solid var(--border);
-      padding: 2px 8px; border-radius: 999px; margin-left: 6px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase;
+      color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      padding: 2px 8px; border-radius: 999px;
     }
+
+    /* Chat log */
     #log {
       flex: 1; overflow-y: auto; background: var(--panel);
-      border: 1px solid var(--border); border-radius: 12px; padding: 16px;
-      display: flex; flex-direction: column; gap: 12px;
+      border: 1px solid var(--border); border-radius: 18px; padding: 18px;
+      display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow);
     }
-    .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; }
-    .msg.user { align-self: flex-end; background: var(--user); border-bottom-right-radius: 4px; }
-    .msg.bot { align-self: flex-start; background: var(--panel-2); border-bottom-left-radius: 4px; }
-    .msg.bot .cursor { color: var(--accent); animation: blink 1s steps(1) infinite; }
+    .row { display: flex; align-items: flex-end; gap: 10px; animation: rise 0.28s ease both; }
+    .row.user { flex-direction: row-reverse; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+    .avatar {
+      width: 30px; height: 30px; flex: none; border-radius: 50%; font-size: 15px;
+      display: grid; place-items: center; background: var(--panel-2);
+      border: 1px solid var(--border);
+    }
+    .bubble {
+      max-width: 78%; padding: 11px 15px; border-radius: 16px; white-space: pre-wrap;
+      word-wrap: break-word; box-shadow: var(--shadow);
+    }
+    .row.bot .bubble { background: var(--panel-2); border: 1px solid var(--border);
+                       border-bottom-left-radius: 5px; }
+    .row.user .bubble {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff; border-bottom-right-radius: 5px;
+    }
+    .bubble strong { font-weight: 700; }
+    .cursor { color: var(--accent); animation: blink 1s steps(1) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
-    .hint { color: var(--muted); font-size: 13px; text-align: center; margin: auto 0; }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+
+    /* Typing indicator */
+    .typing { display: inline-flex; gap: 4px; padding: 2px 0; }
+    .typing span {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+                        30% { transform: translateY(-5px); opacity: 1; } }
+
+    /* Empty state */
+    .hint { margin: auto; text-align: center; color: var(--muted); }
+    .hint .big { font-size: 34px; }
+    .hint .big + div { margin-top: 8px; font-size: 14px; }
+
+    /* Example chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 2px 0; }
     .chip {
-      font-size: 13px; color: var(--muted); background: var(--panel-2);
-      border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px;
-      cursor: pointer;
+      font-size: 13px; color: var(--muted); background: var(--panel);
+      border: 1px solid var(--border); border-radius: 999px; padding: 7px 13px;
+      cursor: pointer; transition: all 0.15s;
     }
-    .chip:hover { color: var(--text); border-color: var(--accent); }
-    form { display: flex; gap: 8px; margin-top: 12px; }
+    .chip:hover { color: var(--text); border-color: var(--accent);
+                  background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+
+    /* Input bar */
+    form { display: flex; gap: 10px; margin-top: 14px; align-items: center; }
+    .field {
+      flex: 1; display: flex; align-items: center; background: var(--panel);
+      border: 1px solid var(--border); border-radius: 999px; padding: 4px 6px 4px 18px;
+      box-shadow: var(--shadow); transition: border-color 0.15s;
+    }
+    .field:focus-within { border-color: var(--accent); }
     input[type=text] {
-      flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border);
-      background: var(--panel); color: var(--text); font-size: 15px;
+      flex: 1; border: none; outline: none; background: transparent;
+      color: var(--text); font-size: 15px; padding: 10px 0;
     }
-    input[type=text]:focus { outline: none; border-color: var(--accent); }
-    button {
-      padding: 12px 18px; border-radius: 10px; border: none; background: var(--accent);
-      color: white; font-size: 15px; font-weight: 600; cursor: pointer;
+    input[type=text]::placeholder { color: var(--muted); }
+    #send {
+      width: 40px; height: 40px; flex: none; border: none; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff; font-size: 17px; cursor: pointer; display: grid; place-items: center;
+      transition: transform 0.12s, opacity 0.15s;
     }
-    button:disabled { opacity: 0.5; cursor: default; }
+    #send:hover:not(:disabled) { transform: scale(1.06); }
+    #send:disabled { opacity: 0.45; cursor: default; }
   </style>
 </head>
 <body>
   <div class="app">
     <header>
-      <h1>🎬 Movie CRS <span class="badge" id="badge">…</span></h1>
-      <div class="sub">A conversational movie recommender — ask for something and watch the reply stream in.</div>
+      <div class="logo">🎬</div>
+      <div>
+        <h1>Movie CRS <span class="badge" id="badge">…</span></h1>
+        <div class="sub">A conversational movie recommender — replies stream in live.</div>
+      </div>
     </header>
 
     <div id="log">
-      <div class="hint" id="hint">Ask for a movie recommendation to get started.</div>
+      <div class="hint" id="hint">
+        <div class="big">🍿</div>
+        <div>Ask for a movie recommendation to get started.</div>
+      </div>
     </div>
 
     <div class="chips" id="chips">
@@ -89,8 +156,10 @@
     </div>
 
     <form id="form">
-      <input type="text" id="input" placeholder="e.g. recommend a gripping crime drama" autocomplete="off" />
-      <button type="submit" id="send">Send</button>
+      <div class="field">
+        <input type="text" id="input" placeholder="Ask for a movie…" autocomplete="off" />
+      </div>
+      <button type="submit" id="send" aria-label="Send">↑</button>
     </form>
   </div>
 
@@ -99,7 +168,7 @@
     const form = document.getElementById("form");
     const input = document.getElementById("input");
     const sendBtn = document.getElementById("send");
-    const hint = document.getElementById("hint");
+    let hint = document.getElementById("hint");
 
     // Conversation state sent back to the server so it has full context.
     const history = [];
@@ -116,14 +185,23 @@
       }
     });
 
-    function addMessage(role, text) {
-      if (hint) hint.remove();
-      const el = document.createElement("div");
-      el.className = "msg " + (role === "user" ? "user" : "bot");
-      el.textContent = text;
-      log.appendChild(el);
+    // Build a message row (bot rows get an avatar); returns the bubble element.
+    function addMessage(role) {
+      if (hint) { hint.remove(); hint = null; }
+      const row = document.createElement("div");
+      row.className = "row " + role;
+      if (role === "bot") {
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.textContent = "🎬";
+        row.appendChild(avatar);
+      }
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      row.appendChild(bubble);
+      log.appendChild(row);
       log.scrollTop = log.scrollHeight;
-      return el;
+      return bubble;
     }
 
     // Render a reply safely: escape HTML, turn **bold** into real bold, and
@@ -147,13 +225,14 @@
 
       // Snapshot history BEFORE adding the current question (it's sent separately).
       const priorHistory = history.slice();
-      addMessage("user", question);
+      const userEl = addMessage("user");
+      userEl.textContent = question;
       history.push({ role: "user", content: question });
       input.value = "";
       setBusy(true);
 
-      const botEl = addMessage("bot", "");
-      botEl.innerHTML = '<span class="cursor">▋</span>';
+      const botEl = addMessage("bot");
+      botEl.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
 
       try {
         const res = await fetch("/chat", {
@@ -168,7 +247,7 @@
           const { done, value } = await reader.read();
           if (done) break;
           acc += decoder.decode(value, { stream: true });
-          // Render live, with a blinking cursor at the end while streaming.
+          // Replace the typing dots with the reply, streaming in with a cursor.
           botEl.innerHTML = renderReply(acc) + '<span class="cursor">▋</span>';
           log.scrollTop = log.scrollHeight;
         }
