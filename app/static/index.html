@@ -240,19 +240,46 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question, history: priorHistory }),
         });
+
+        // Decouple display from the network. The server can deliver tokens in
+        // big, fast bursts, so we buffer them and reveal characters at a smooth,
+        // steady pace — a graceful typewriter rather than sudden jumps. It still
+        // catches up quickly (reveals more when further behind), so it's not slow.
+        let received = "";
+        let shown = 0;
+        let streaming = true;
+
+        const typewriter = new Promise((resolve) => {
+          function paint() {
+            const remaining = received.length - shown;
+            if (remaining > 0) {
+              shown += Math.min(8, Math.max(2, Math.ceil(remaining / 12)));
+              if (shown > received.length) shown = received.length;
+              const cursor = (streaming || shown < received.length)
+                ? '<span class="cursor">▋</span>' : '';
+              botEl.innerHTML = renderReply(received.slice(0, shown)) + cursor;
+              log.scrollTop = log.scrollHeight;
+            }
+            if (streaming || shown < received.length) {
+              requestAnimationFrame(paint);
+            } else {
+              botEl.innerHTML = renderReply(received);  // final, cursor removed
+              resolve();
+            }
+          }
+          requestAnimationFrame(paint);
+        });
+
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
-        let acc = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          acc += decoder.decode(value, { stream: true });
-          // Replace the typing dots with the reply, streaming in with a cursor.
-          botEl.innerHTML = renderReply(acc) + '<span class="cursor">▋</span>';
-          log.scrollTop = log.scrollHeight;
+          received += decoder.decode(value, { stream: true });
         }
-        botEl.innerHTML = renderReply(acc);   // final render, cursor removed
-        history.push({ role: "assistant", content: acc });
+        streaming = false;        // let the typewriter reveal any buffered tail
+        await typewriter;
+        history.push({ role: "assistant", content: received });
       } catch (err) {
         botEl.textContent = "⚠️ Something went wrong reaching the server.";
       } finally {
