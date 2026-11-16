@@ -95,6 +95,56 @@ class RetrievedMovie:
     score: float
 
 
+# Words too generic to identify a specific movie (so they don't trigger the
+# "the user named this film" exclusion below).
+_TITLE_STOPWORDS = {
+    "the", "and", "part", "vol", "volume", "two", "three", "four", "collection",
+    "edition", "story", "movie", "film", "series", "complete", "season", "special",
+}
+
+
+def _distinctive_words(title: str) -> set[str]:
+    """Distinctive (non-generic, 4+ char) words of a movie title, lowercased."""
+    cleaned = re.sub(r"[\[(].*?[\])]", " ", title).lower()
+    return {
+        w
+        for w in re.findall(r"[a-z0-9]+", cleaned)
+        if len(w) >= 4 and w not in _TITLE_STOPWORDS
+    }
+
+
+def filter_candidates(
+    candidates: Sequence[RetrievedMovie], mentioned: str, top_k: int
+) -> list[RetrievedMovie]:
+    """Dedupe, and drop movies the user named — plus their franchise.
+
+    "Something like Dune" should return films *similar to* Dune, not Dune itself,
+    its sequels, or documentaries about it. We detect which retrieved titles the
+    user actually named (a distinctive title word appears in the conversation),
+    then drop every candidate that shares such a word. Keeps up to ``top_k``.
+    """
+    mentioned_low = mentioned.lower()
+    banned: set[str] = set()
+    for candidate in candidates:
+        words = _distinctive_words(candidate.movie.title)
+        if any(re.search(rf"\b{re.escape(w)}\b", mentioned_low) for w in words):
+            banned |= words  # user named this movie -> ban its distinctive words
+
+    seen: set[str] = set()
+    kept: list[RetrievedMovie] = []
+    for candidate in candidates:
+        key = candidate.movie.title.lower()
+        if key in seen:
+            continue  # the catalogue has duplicate titles (box sets, editions)
+        if _distinctive_words(candidate.movie.title) & banned:
+            continue  # the named movie itself or something in its franchise
+        seen.add(key)
+        kept.append(candidate)
+        if len(kept) >= top_k:
+            break
+    return kept
+
+
 def movie_to_document(movie: Movie) -> str:
     """Render a movie as the single text blurb we embed and index.
 

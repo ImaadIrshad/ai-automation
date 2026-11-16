@@ -16,12 +16,16 @@ of hallucinating plausible-sounding ones.
 
 from __future__ import annotations
 
-import re
 from collections.abc import AsyncIterator, Sequence
 
 from crs.base import CRSModel, Turn
 from crs.llm import ChatLLM, Message
-from crs.retrieval import RetrievedMovie, Retriever, strip_negations
+from crs.retrieval import (
+    RetrievedMovie,
+    Retriever,
+    filter_candidates,
+    strip_negations,
+)
 
 _SYSTEM_PROMPT = (
     "You are a knowledgeable, friendly movie recommendation assistant. Below are "
@@ -42,9 +46,9 @@ _SYSTEM_PROMPT = (
     "bold, headings, bullet points, numbered lists, or tables."
 )
 
-# How many extra candidates to pull before filtering, so dropping the named movie
-# and duplicates still leaves a full top_k.
-_OVERFETCH = 6
+# Over-fetch generously: "like Dune" pulls back the whole Dune franchise, which
+# we then drop — so we need plenty of other candidates left to recommend.
+_OVERFETCH = 25
 
 
 class RAGModel(CRSModel):
@@ -57,41 +61,17 @@ class RAGModel(CRSModel):
 
     async def respond(self, history: list[Turn], question: str) -> AsyncIterator[str]:
         query = _build_query(history, question)
-        # Over-fetch, then dedupe and drop any movie the user explicitly named so
-        # "movies like X" doesn't just recommend X straight back.
         raw = self.retriever.search(query, top_k=self.top_k + _OVERFETCH)
-        candidates = _filter_candidates(raw, question, self.top_k)
+        # Drop any movie named anywhere in the conversation (and its franchise),
+        # so "like X" recommends films *similar to* X, never X itself — and a
+        # movie named a few turns ago can't loop back as a recommendation.
+        mentioned = " ".join(
+            [t.content for t in history if t.role == "user"] + [question]
+        )
+        candidates = filter_candidates(raw, mentioned, self.top_k)
         messages = build_messages(history, question, candidates)
         async for chunk in self.llm.stream(messages):
             yield chunk
-
-
-def _filter_candidates(
-    candidates: Sequence[RetrievedMovie], question: str, top_k: int
-) -> list[RetrievedMovie]:
-    """Dedupe by title and drop movies the user named, keeping up to ``top_k``."""
-    question_lower = question.lower()
-    seen: set[str] = set()
-    kept: list[RetrievedMovie] = []
-    for candidate in candidates:
-        key = candidate.movie.title.lower()
-        if key in seen:
-            continue  # the real catalogue has duplicate titles (box sets, editions)
-        base = _base_title(candidate.movie.title)
-        # Skip a movie the user explicitly named; length guard avoids matching
-        # very short titles as coincidental substrings.
-        if len(base) >= 5 and base in question_lower:
-            continue
-        seen.add(key)
-        kept.append(candidate)
-        if len(kept) >= top_k:
-            break
-    return kept
-
-
-def _base_title(title: str) -> str:
-    """Core title, lowercased, without bracketed bits ('Interstellar [2014]')."""
-    return re.sub(r"[\[(].*?[\])]", "", title).strip().lower()
 
 
 def _build_query(history: list[Turn], question: str) -> str:

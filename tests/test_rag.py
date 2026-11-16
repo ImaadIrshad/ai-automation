@@ -10,8 +10,8 @@ import pytest
 
 from crs.base import Turn
 from crs.llm import FakeLLM
-from crs.rag import RAGModel, _build_query, _filter_candidates, build_messages
-from crs.retrieval import RetrievedMovie
+from crs.rag import RAGModel, _build_query, build_messages
+from crs.retrieval import RetrievedMovie, filter_candidates
 from data.loader import Movie
 
 _INCEPTION = Movie(
@@ -64,10 +64,24 @@ def test_build_query_strips_negated_terms() -> None:
 def test_filter_excludes_named_movie() -> None:
     # "movies like interstellar" must not recommend Interstellar back.
     candidates = [RetrievedMovie(_INTERSTELLAR, 0.9), RetrievedMovie(_MATRIX, 0.8)]
-    kept = _filter_candidates(candidates, "movies like interstellar", top_k=5)
+    kept = filter_candidates(candidates, "movies like interstellar", top_k=5)
     titles = [c.movie.title for c in kept]
     assert "Interstellar [2014]" not in titles
     assert "The Matrix" in titles
+
+
+def test_filter_excludes_short_named_title_and_franchise() -> None:
+    # "like Dune" must drop Dune (short, 4-char title) AND its sequel.
+    dune = Movie("d1", "Dune (2021)", "Sci-Fi", "Desert epic.")
+    dune2 = Movie("d2", "Dune: Part Two", "Sci-Fi", "The saga continues.")
+    arrival = Movie("a1", "Arrival", "Sci-Fi", "Linguist meets aliens.")
+    candidates = [
+        RetrievedMovie(dune, 0.9),
+        RetrievedMovie(dune2, 0.8),
+        RetrievedMovie(arrival, 0.7),
+    ]
+    kept = filter_candidates(candidates, "something like dune", top_k=5)
+    assert [c.movie.title for c in kept] == ["Arrival"]
 
 
 def test_filter_dedupes_repeated_titles() -> None:
@@ -76,7 +90,7 @@ def test_filter_dedupes_repeated_titles() -> None:
         RetrievedMovie(_MATRIX, 0.8),
         RetrievedMovie(_INCEPTION, 0.7),
     ]
-    kept = _filter_candidates(dup, "a sci-fi movie", top_k=5)
+    kept = filter_candidates(dup, "a sci-fi movie", top_k=5)
     assert [c.movie.title for c in kept] == ["The Matrix", "Inception"]
 
 
