@@ -253,7 +253,7 @@
           function paint() {
             const remaining = received.length - shown;
             if (remaining > 0) {
-              shown += Math.min(8, Math.max(2, Math.ceil(remaining / 12)));
+              shown += Math.min(4, Math.max(2, Math.ceil(remaining / 16)));
               if (shown > received.length) shown = received.length;
               const cursor = (streaming || shown < received.length)
                 ? '<span class="cursor">▋</span>' : '';
